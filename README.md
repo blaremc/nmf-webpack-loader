@@ -2,7 +2,7 @@
 
 This loader parses your .nmf file, searches for "url" occurences, copies
 the assets into the output directory, replaces the url with the outputted path,
-recompiles the .nmf JSON structure and
+recompiles the .nmf JSON structure and returns a data url (e.g. `data:application/x-pnacl,{"program":...`).
 
 ## Usage
 
@@ -32,7 +32,7 @@ module.exports = {
 };
 ```
 
-Example .nmf file:
+Example .nmf file, `my-nativeclient.nmf`:
 
 ```json
 {
