@@ -11,17 +11,6 @@ module.exports = function (source) {
   const callback = this.async();
   const context = this;
 
-  /*
-  console.log('read source', source);
-  let data;
-  try {
-    data = JSON.parse(source);
-  } catch (err) {
-    callback(null, source);
-    return;
-  }
-  */
-
   const data = JSON.parse(source);
 
   var query = loaderUtils.parseQuery(this.query);
@@ -62,8 +51,7 @@ module.exports = function (source) {
     const importRuntime = "var runtime = require(" +
       loaderUtils.stringifyRequest(this, "!" + require.resolve("./runtime.js")) +
       ");";
-    const code = importRuntime + 'module.exports = "data:application/json," + JSON.stringify(' +res + ');';
-    console.log('final code', code);
+    const code = importRuntime + 'module.exports = "data:application/x-pnacl," + JSON.stringify(' +res + ');';
     callback(null, code);
   }).catch(err => {
     callback(err);
@@ -125,8 +113,7 @@ function importFile(config, file, callback) {
 
       this.emitFile(url, binaryData);
 
-      const request = 'require(' + loaderUtils.stringifyRequest(this, moduleRequest) + ')';
-      console.log('request', request);
+      const request = 'runtime.absolutePath(require(' + loaderUtils.stringifyRequest(this, moduleRequest) + '))';
       callback(null, request);
     }
   });

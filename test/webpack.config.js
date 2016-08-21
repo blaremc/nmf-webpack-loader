@@ -18,9 +18,13 @@ module.exports = {
       query: {
         name: '[name].[hash:6].[ext]'
       }
-    }]
+    }],
+    noParse: [
+      /runtime\.js$/
+    ]
   },
   resolveLoader: {
     modulesDirectories: ['../src', '../node_modules']
-  }
+  },
+  target: "web"
 };
