@@ -1,27 +1,31 @@
-const path = require('path');
-const fs = require('fs');
-const loaderUtils = require('loader-utils');
+'use strict';
+
+var path = require('path');
+var fs = require('fs');
+var loaderUtils = require('loader-utils');
 
 // 1) Parses Native Client Manifests
 // 2) Detects assets required
 // 3) Adds dependency to these assets, and updates paths (possibly hashed)
 // https://developer.chrome.com/native-client/reference/nacl-manifest-format
 module.exports = function (source) {
-  this.cacheable();
-  const callback = this.async();
-  const context = this;
+  var _this = this;
 
-  const data = JSON.parse(source);
+  this.cacheable();
+  var callback = this.async();
+  var context = this;
+
+  var data = JSON.parse(source);
 
   var query = loaderUtils.parseQuery(this.query);
   var configKey = query.config || "nmfLoader";
   var options = this.options[configKey] || {};
 
-  const config = makeConfig(options, query);
+  var config = makeConfig(options, query);
 
   function replaceUrl(url) {
-    return new Promise((resolve, reject) => {
-      importFile.call(context, config, url, (err, result) => {
+    return new Promise(function (resolve, reject) {
+      importFile.call(context, config, url, function (err, result) {
         if (err) {
           reject(err);
         } else {
@@ -33,87 +37,95 @@ module.exports = function (source) {
 
   function recursiveReplaceUrls(data) {
     if (Array.isArray(data)) {
-      return Promise.all(data.map(recursiveReplaceUrls)).then(stringified => '[' + stringified.join(',\n') + ']');
+      return Promise.all(data.map(recursiveReplaceUrls)).then(function (stringified) {
+        return '[' + stringified.join(',\n') + ']';
+      });
     } else if (Object.prototype.toString.call(data) === '[object Object]') {
-      return Promise.all(Object.keys(data).map(key => {
+      return Promise.all(Object.keys(data).map(function (key) {
         if (key === 'url') {
-          return replaceUrl(data[key]).then(replaced => `"url": ${replaced}`);
+          return replaceUrl(data[key]).then(function (replaced) {
+            return '"url": ' + replaced;
+          });
         } else {
-          return recursiveReplaceUrls(data[key]).then(recursive => JSON.stringify(key) + ': ' + recursive);
+          return recursiveReplaceUrls(data[key]).then(function (recursive) {
+            return JSON.stringify(key) + ': ' + recursive;
+          });
         }
-      })).then(stringified => '{' + stringified.join(',\n') + '}');
+      })).then(function (stringified) {
+        return '{' + stringified.join(',\n') + '}';
+      });
     } else {
       return Promise.resolve(JSON.stringify(data));
     }
   }
 
-  recursiveReplaceUrls(data).then(res => {
-    const importRuntime = "var runtime = require(" +
-      loaderUtils.stringifyRequest(this, "!" + require.resolve("./runtime.js")) +
-      ");";
-    const code = importRuntime + 'module.exports = "data:application/x-pnacl," + JSON.stringify(' +res + ');';
+  recursiveReplaceUrls(data).then(function (res) {
+    var importRuntime = "var runtime = require(" + loaderUtils.stringifyRequest(_this, "!" + require.resolve("./runtime.js")) + ");";
+    var code = importRuntime + 'module.exports = "data:application/x-pnacl," + JSON.stringify(' + res + ');';
     callback(null, code);
-  }).catch(err => {
+  }).catch(function (err) {
     callback(err);
   });
 };
 
 // This snippet is borrowed from webpack's file-loader
 function makeConfig(options, query) {
-  const config = {
+  var config = {
     publicPath: false,
     name: "[hash].[ext]"
   };
 
   // options takes precedence over config
-  Object.keys(options).forEach(function(attr) {
+  Object.keys(options).forEach(function (attr) {
     config[attr] = options[attr];
   });
 
   // query takes precedence over config and options
-  Object.keys(query).forEach(function(attr) {
+  Object.keys(query).forEach(function (attr) {
     config[attr] = query[attr];
   });
   return config;
 }
 
 function importFile(config, file, callback) {
-  const moduleRequest = loaderUtils.urlToRequest(file);
-  const dirname = path.dirname(this.resource);
-  this.resolve(dirname, moduleRequest, (err, filename) => {
+  var _this2 = this;
+
+  var moduleRequest = loaderUtils.urlToRequest(file);
+  var dirname = path.dirname(this.resource);
+  this.resolve(dirname, moduleRequest, function (err, filename) {
     if (err) {
       callback(err);
     } else {
-      const binaryData = fs.readFileSync(filename);
+      var binaryData = fs.readFileSync(filename);
 
-      const _oldResource = this.resource;
-      this.resource = filename;
+      var _oldResource = _this2.resource;
+      _this2.resource = filename;
 
-      const {name, ext} = path.parse(filename);
+      var _path$parse = path.parse(filename);
 
-      const newName = config.name.replace('[name]', name).replace('.[ext]', ext);
+      var name = _path$parse.name;
+      var ext = _path$parse.ext;
 
-      var url = loaderUtils.interpolateName(this,  newName, {
-        context: config.context || this.options.context,
+
+      var newName = config.name.replace('[name]', name).replace('.[ext]', ext);
+
+      var url = loaderUtils.interpolateName(_this2, newName, {
+        context: config.context || _this2.options.context,
         content: binaryData,
         regExp: config.regExp
       });
-      this.resource = _oldResource;
+      _this2.resource = _oldResource;
 
       var publicPath = "__webpack_public_path__ + " + JSON.stringify(url);
 
       if (config.publicPath) {
         // support functions as publicPath to generate them dynamically
-        publicPath = JSON.stringify(
-          typeof config.publicPath === "function"
-            ? config.publicPath(url)
-            : config.publicPath + url
-        );
+        publicPath = JSON.stringify(typeof config.publicPath === "function" ? config.publicPath(url) : config.publicPath + url);
       }
 
-      this.emitFile(url, binaryData);
+      _this2.emitFile(url, binaryData);
 
-      const request = 'runtime.absolutePath(require(' + loaderUtils.stringifyRequest(this, moduleRequest) + '))';
+      var request = 'runtime.absolutePath(require(' + loaderUtils.stringifyRequest(_this2, moduleRequest) + '))';
       callback(null, request);
     }
   });
